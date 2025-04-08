@@ -21,7 +21,7 @@ jobs:
       - name: Get Next Version
         if: "${{ ! startsWith(github.event.head_commit.message, 'docs: update changelog for ') }}"
         id: semver
-        uses: ietf-tools/semver-action@v1.10.0
+        uses: ietf-tools/semver-action@v1.10.1
         with:
           token: ${{ github.token }}
           branch: main
