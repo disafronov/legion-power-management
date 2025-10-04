@@ -1,0 +1,28 @@
+---
+name: Validate
+
+"on":
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate:
+    name: "Validate"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Semantic release dry run
+        run: |
+          docker run --rm \
+            --user 1001 \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            ghcr.io/disafronov/semantic-release:latest \
+            --dry-run
