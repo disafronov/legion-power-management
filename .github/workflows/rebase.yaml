@@ -1,0 +1,26 @@
+---
+name: "Rebase"
+
+"on":
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: push-rebase-main
+  cancel-in-progress: true
+
+jobs:
+  rebase:
+    name: "Rebase"
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: "Rebase all non-draft non-dependencies pull requests"
+        uses: peter-evans/rebase@v3.1.0
+        with:
+          base: main
+          exclude-drafts: true
+          exclude-labels: dependencies
