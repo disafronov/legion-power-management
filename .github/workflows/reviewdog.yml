@@ -1,16 +1,25 @@
-name: reviewdog
-on: [pull_request]
+---
+name: Reviewdog
+
+"on":
+  pull_request:
+    branches:
+      - main
+
 jobs:
   shellcheck:
-    name: runner / shellcheck
+    name: Shellcheck
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v5
-      - name: shellcheck
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Shellcheck
         uses: reviewdog/action-shellcheck@v1
         with:
-          github_token: ${{ secrets.github_token }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           reporter: github-pr-review
           fail_on_error: true
-          path: "usr/local/libexec"
-          pattern: "legion-power-profiles-monitor"
+          check_all_files_with_shebangs: true
