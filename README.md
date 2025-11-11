@@ -10,4 +10,4 @@ Bridge between power-profiles-daemon and Lenovo hardware power profiles on syste
 - [legion-wmi](https://github.com/DmitriySafronov/legion-wmi) kernel module
 
 ## Usage
-Remember to enable system service. And reboot.
+Remember to enable all 4 (four) system services. And reboot.
