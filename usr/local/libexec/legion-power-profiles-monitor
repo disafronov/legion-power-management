@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 while true; do
-    POWER_PROFILE_NEW_RAW=$(echo '\_SB_.PC00.LPCB.EC0_.SPMO' > /proc/acpi/call; tr -d '\0' < /proc/acpi/call | grep -e '^0x')
+    POWER_PROFILE_NEW_RAW=$(echo '\_SB_.PC00.LPCB.EC0_.SPMO' > /proc/acpi/call; tr -d '\0' < /proc/acpi/call | grep -e '^0x' | sed 's/called$//')
     case ${POWER_PROFILE_NEW_RAW} in
         0x0)
           # "Balanced"
