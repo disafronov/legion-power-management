@@ -19,7 +19,7 @@ jobs:
       contents: write
     steps:
       - name: "Rebase all non-draft non-dependencies pull requests"
-        uses: peter-evans/rebase@v3.1.0
+        uses: peter-evans/rebase@v4.0.0
         with:
           base: main
           exclude-drafts: true
