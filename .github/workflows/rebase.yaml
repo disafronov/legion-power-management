@@ -14,12 +14,14 @@ jobs:
   rebase:
     name: "Rebase"
     runs-on: ubuntu-latest
+    # Run only on release commits
+    if: startsWith(github.event.head_commit.message, 'chore(release):')
     permissions:
       pull-requests: write
       contents: write
     steps:
       - name: "Rebase all non-draft non-dependencies pull requests"
-        uses: peter-evans/rebase@v3.1.0
+        uses: peter-evans/rebase@v4.0.0
         with:
           base: main
           exclude-drafts: true

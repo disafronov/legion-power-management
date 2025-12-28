@@ -9,8 +9,9 @@ name: Release
 jobs:
   release:
     name: "Release"
-    if: ${{ !startsWith(github.event.head_commit.message, 'chore(release):') }}
     runs-on: ubuntu-latest
+    # Skip release on release commits to avoid infinite loop
+    if: "!startsWith(github.event.head_commit.message, 'chore(release):')"
     permissions:
       contents: write
       pull-requests: write
