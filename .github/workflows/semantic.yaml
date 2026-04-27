@@ -1,0 +1,121 @@
+---
+name: Semantic
+
+"on":
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+      - release
+
+jobs:
+  rebase:
+    name: "Rebase"
+    runs-on: ubuntu-latest
+    # Runs when: push to main with commit message starting with "chore(release):"
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      startsWith(github.event.head_commit.message, 'chore(release):')
+    concurrency:
+      group: push-rebase-main
+      cancel-in-progress: true
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: "Rebase all non-draft non-dependencies pull requests"
+        uses: peter-evans/rebase@v4.0.0
+        with:
+          base: main
+          exclude-drafts: true
+          exclude-labels: dependencies
+
+  validate:
+    name: "Validate"
+    runs-on: ubuntu-latest
+    # Runs when: pull_request targeting main
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Semantic release dry run
+        run: |
+          docker run --rm \
+            --user 1001 \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            ghcr.io/disafronov/semantic-release:latest \
+            --dry-run
+
+  release:
+    name: "Release"
+    runs-on: ubuntu-latest
+    # Runs when: push to release OR push to main (excluding "chore(release):" commits)
+    if: >-
+      github.event_name == 'push' && (
+        github.ref == 'refs/heads/release' ||
+        (github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore(release):'))
+      )
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: semantic-release
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.SEMANTIC_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Semantic release
+        run: |
+          docker run --rm \
+            --user 1001 \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            -e GITHUB_TOKEN=${{ secrets.SEMANTIC_RELEASE_TOKEN || secrets.GITHUB_TOKEN }} \
+            -e CI=true \
+            ghcr.io/disafronov/semantic-release:latest
+
+      - name: Sync release to main
+        # Runs when: release job ran on release branch
+        if: success() && github.ref == 'refs/heads/release'
+        run: |
+          git config user.name "Release Bot"
+          git config user.email "noreply@github.com"
+
+          # Fetch latest state after semantic-release pushed commits
+          # This ensures we get all commits that semantic-release created
+          git fetch origin
+
+          # Check if main is already up to date with release
+          if git diff --quiet origin/main origin/release; then
+            echo "main is already up to date with release"
+            exit 0
+          fi
+
+          # Check if main is ancestor of release (can fast-forward)
+          if git merge-base --is-ancestor origin/main origin/release; then
+            echo "Fast-forwarding main to release"
+            git checkout -B main origin/main
+            git merge --ff-only origin/release
+            git push origin main
+          else
+            echo "Rebasing main onto release (force-with-lease required)"
+            git checkout -B main origin/main
+            git rebase origin/release
+            # Use --force-with-lease for safety: only push if remote hasn't changed
+            git push --force-with-lease origin main
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
