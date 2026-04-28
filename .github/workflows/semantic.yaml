@@ -5,6 +5,7 @@ name: Semantic
   pull_request:
     branches:
       - main
+      - release
   push:
     branches:
       - main
