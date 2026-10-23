@@ -1,0 +1,51 @@
+name: Assign pull request
+
+"on":
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+      - unassigned
+
+permissions:
+  pull-requests: write
+
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  assign:
+    name: Assign repository maintainer
+    if: ${{ github.event.pull_request.assignees[0] == null }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Assign PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          OWNER_LOGIN: ${{ github.event.repository.owner.login }}
+          OWNER_TYPE: ${{ github.event.repository.owner.type }}
+          PR_ASSIGNEE: ${{ vars.PR_ASSIGNEE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -n "$PR_ASSIGNEE" ]]; then
+            assignee="$PR_ASSIGNEE"
+          elif [[ "$OWNER_TYPE" == "User" ]]; then
+            assignee="$OWNER_LOGIN"
+          else
+            echo "::error::PR_ASSIGNEE is required for organization repositories"
+            exit 1
+          fi
+
+          echo "Assigning PR #${PR_NUMBER} to ${assignee}"
+
+          gh api \
+            --method POST \
+            "repos/${GH_REPO}/issues/${PR_NUMBER}/assignees" \
+            -f "assignees[]=${assignee}" \
+            --silent
