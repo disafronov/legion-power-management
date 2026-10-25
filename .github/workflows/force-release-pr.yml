@@ -1,0 +1,41 @@
+name: Force Release PR
+
+"on":
+  pull_request:
+    branches:
+      - release
+
+jobs:
+  force-release-pr:
+    if: github.event.pull_request.head.ref == 'main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Generate PR description
+        id: gen
+        uses: tanmay-pathak/generate-pull-request-description@v1.0.0
+        with:
+          pull_request_url: ${{ github.event.pull_request.url }}
+          api_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update PR description and title
+        uses: actions/github-script@v9
+        env:
+          PR_BODY: ${{ steps.gen.outputs.pull_request_description }}
+        with:
+          script: |
+            const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              body: process.env.PR_BODY,
+              title: `Release! PR for ${now}`,
+            });
