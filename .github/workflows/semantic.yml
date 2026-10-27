@@ -6,10 +6,12 @@ name: Semantic
     branches:
       - main
       - release
+      - rc
   push:
     branches:
       - main
       - release
+      - rc
 
 env:
   GIT_AUTHOR_NAME: github-actions[bot]
@@ -28,7 +30,7 @@ jobs:
       startsWith(github.event.head_commit.message, 'chore(release):')
     concurrency:
       group: push-rebase-main
-      cancel-in-progress: true
+      cancel-in-progress: false
     permissions:
       pull-requests: write
       contents: write
@@ -43,7 +45,10 @@ jobs:
   validate:
     name: "Validate"
     runs-on: ubuntu-latest
-    # Runs when: pull_request targeting main
+    concurrency:
+      group: semantic-validate-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    # Runs when: pull_request targeting main, rc, or legacy release
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
@@ -65,17 +70,18 @@ jobs:
   release:
     name: "Release"
     runs-on: ubuntu-latest
-    # Runs when: push to release OR push to main (excluding "chore(release):" commits)
+    # Runs when: push to main, rc, or legacy release
     if: >-
       github.event_name == 'push' && (
         github.ref == 'refs/heads/release' ||
-        (github.ref == 'refs/heads/main' && !startsWith(github.event.head_commit.message, 'chore(release):'))
+        github.ref == 'refs/heads/rc' ||
+        github.ref == 'refs/heads/main'
       )
     permissions:
       contents: write
       pull-requests: write
     concurrency:
-      group: semantic-release
+      group: semantic-release-${{ github.ref_name }}
       cancel-in-progress: false
     steps:
       - name: Checkout
