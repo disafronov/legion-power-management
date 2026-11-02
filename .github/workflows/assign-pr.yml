@@ -11,7 +11,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: audit-${{ github.ref }}
+  group: assign-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:

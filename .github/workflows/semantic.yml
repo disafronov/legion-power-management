@@ -5,12 +5,10 @@ name: Semantic
   pull_request:
     branches:
       - main
-      - release
       - rc
   push:
     branches:
       - main
-      - release
       - rc
 
 env:
@@ -48,7 +46,7 @@ jobs:
     concurrency:
       group: semantic-validate-${{ github.event.pull_request.number }}
       cancel-in-progress: true
-    # Runs when: pull_request targeting main, rc, or legacy release
+    # Runs when: pull_request targeting main or rc
     if: github.event_name == 'pull_request'
     permissions:
       contents: read
@@ -64,16 +62,15 @@ jobs:
             --user 1001 \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
-            ghcr.io/disafronov/semantic-release:latest \
+            ghcr.io/disafronov/semantic-release:${{ vars.SEMANTIC_RELEASE_TAG || 'latest' }} \
             --dry-run
 
   release:
     name: "Release"
     runs-on: ubuntu-latest
-    # Runs when: push to main, rc, or legacy release
+    # Runs when: push to main or rc
     if: >-
       github.event_name == 'push' && (
-        github.ref == 'refs/heads/release' ||
         github.ref == 'refs/heads/rc' ||
         github.ref == 'refs/heads/main'
       )
@@ -98,35 +95,4 @@ jobs:
             -w /workspace \
             -e GITHUB_TOKEN=${{ secrets.SEMANTIC_RELEASE_TOKEN || secrets.GITHUB_TOKEN }} \
             -e CI=true \
-            ghcr.io/disafronov/semantic-release:latest
-
-      - name: Sync release to main
-        # Runs when: release job ran on release branch
-        if: success() && github.ref == 'refs/heads/release'
-        run: |
-
-          # Fetch latest state after semantic-release pushed commits
-          # This ensures we get all commits that semantic-release created
-          git fetch origin
-
-          # Check if main is already up to date with release
-          if git diff --quiet origin/main origin/release; then
-            echo "main is already up to date with release"
-            exit 0
-          fi
-
-          # Check if main is ancestor of release (can fast-forward)
-          if git merge-base --is-ancestor origin/main origin/release; then
-            echo "Fast-forwarding main to release"
-            git checkout -B main origin/main
-            git merge --ff-only origin/release
-            git push origin main
-          else
-            echo "Rebasing main onto release (force-with-lease required)"
-            git checkout -B main origin/main
-            git rebase origin/release
-            # Use --force-with-lease for safety: only push if remote hasn't changed
-            git push --force-with-lease origin main
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+            ghcr.io/disafronov/semantic-release:${{ vars.SEMANTIC_RELEASE_TAG || 'latest' }}
