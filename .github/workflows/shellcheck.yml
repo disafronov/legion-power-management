@@ -1,0 +1,70 @@
+---
+name: ShellCheck
+
+"on":
+  pull_request:
+    branches:
+      - main
+      - rc
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: ShellCheck
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          checked=0
+          failed=0
+
+          while IFS= read -r -d '' file; do
+            [[ -f "$file" ]] || continue
+            IFS= read -r shebang < "$file" || true
+
+            case "$file" in
+              *.sh|*.bash|*.bats|*.dash|*.ksh) ;;
+              *)
+                if [[ "$shebang" == '#!'* ]]; then
+                  read -r -a args <<< "${shebang#\#!}"
+                  interpreter="${args[0]##*/}"
+                  if [[ "$interpreter" == env ]]; then
+                    for arg in "${args[@]:1}"; do
+                      case "$arg" in
+                        -S|--split-string|--|-*|*=*) continue ;;
+                        *) interpreter="${arg##*/}"; break ;;
+                      esac
+                    done
+                  fi
+                  case "$interpreter" in
+                    sh|bash|rbash|dash|ash|ksh|ksh93|mksh|pdksh) ;;
+                    *) continue ;;
+                  esac
+                elif ! head -n 5 "$file" | grep -aqE '^[[:space:]]*#[[:space:]]*shellcheck shell='; then
+                  continue
+                fi
+                ;;
+            esac
+
+            ((checked += 1))
+            status=0
+            output=$(shellcheck --format=gcc "$file" 2>&1) || status=$?
+            [[ -z "$output" ]] || printf '%s\n' "$output"
+
+            if ((status > 1)) || grep -qE ':[0-9]+:[0-9]+: error: ' <<< "$output"; then
+              failed=1
+            fi
+          done < <(git ls-files -z)
+
+          echo "ShellCheck: checked $checked files"
+          exit "$failed"
