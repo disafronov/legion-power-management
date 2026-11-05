@@ -18,28 +18,6 @@ env:
   GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
 
 jobs:
-  rebase:
-    name: "Rebase"
-    runs-on: ubuntu-latest
-    # Runs when: push to main with commit message starting with "chore(release):"
-    if: >-
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main' &&
-      startsWith(github.event.head_commit.message, 'chore(release):')
-    concurrency:
-      group: push-rebase-main
-      cancel-in-progress: false
-    permissions:
-      pull-requests: write
-      contents: write
-    steps:
-      - name: "Rebase all non-draft non-dependencies pull requests"
-        uses: peter-evans/rebase@v4.0.0
-        with:
-          base: main
-          exclude-drafts: true
-          exclude-labels: dependencies
-
   validate:
     name: "Validate"
     runs-on: ubuntu-latest
@@ -62,7 +40,7 @@ jobs:
             --user 1001 \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
-            ghcr.io/disafronov/semantic-release:${{ vars.SEMANTIC_RELEASE_TAG || 'latest' }} \
+            ${{ vars.SEMANTIC_RELEASE_IMAGE || 'ghcr.io/disafronov/semantic-release' }}:${{ vars.SEMANTIC_RELEASE_TAG || 'latest' }} \
             --dry-run
 
   release:
@@ -104,4 +82,4 @@ jobs:
             -w /workspace \
             -e GITHUB_TOKEN \
             -e CI=true \
-            ghcr.io/disafronov/semantic-release:${{ vars.SEMANTIC_RELEASE_TAG || 'latest' }}
+            ${{ vars.SEMANTIC_RELEASE_IMAGE || 'ghcr.io/disafronov/semantic-release' }}:${{ vars.SEMANTIC_RELEASE_TAG || 'latest' }}
