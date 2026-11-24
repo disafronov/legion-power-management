@@ -42,9 +42,8 @@ jobs:
         run: |
           docker run --rm \
             --user 1001 \
-            --network none \
             --read-only \
-            --tmpfs /tmp:rw,nosuid,size=64m,mode=1777 \
+            --tmpfs /tmp:exec \
             -v "${{ github.workspace }}:/workspace" \
             -e SEMANTIC_RELEASE_DIFF_OUTPUT=/workspace/validation-artifacts/release.diff \
             -w /workspace \
@@ -96,7 +95,7 @@ jobs:
           docker run --rm \
             --user 1001 \
             --read-only \
-            --tmpfs /tmp:rw,nosuid,size=128m,mode=1777 \
+            --tmpfs /tmp:exec \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             -e GITHUB_TOKEN \
